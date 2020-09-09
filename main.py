@@ -1,11 +1,7 @@
 import discord
 import sys
-import asyncio
 
 current_rooms = []
-"""
-AmongUs
-"""
 
 
 class AmongUs:
@@ -104,16 +100,8 @@ class MyClient(discord.Client):
                             voice_chan = x
 
             if voice_chan is None:
-                error_message = await message.channel.send("User not connected to a channel. Please enter the voice channel ID.")
-                try:
-                    voice_id = await client.wait_for('message', check=check, timeout=30)
-                    game_owner = voice_id.author
-                    voice_chan = await client.fetch_channel(voice_id.content)
-                    await voice_id.delete()
-                    await error_message.delete()
-                except asyncio.TimeoutError:
-                    await message.channel.send("User did not respond within 30 seconds, aborting...")
-                    return
+                await message.channel.send("Please be connected to a Voice Channel!")
+                return
 
             current = AmongUs(game_owner, voice_chan)
             current_rooms.append(current)
@@ -177,6 +165,20 @@ class MyClient(discord.Client):
                             await update_room(x)
                         except IndexError and LookupError:
                             await message.channel.send("Please enter the code with the command")
+
+        elif message.content.startswith("!list"):
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    await update_room(x)
+                    waiting_list = ""
+                    for i in x.waiting:
+                        waiting_list += str(i.name) + "\n"
+
+                    if len(waiting_list) == 0:
+                        waiting_list = "No Waiting"
+
+                    await message.channel.send(waiting_list)
+                    return
 
 
 client = MyClient()
