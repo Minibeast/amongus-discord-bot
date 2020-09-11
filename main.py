@@ -1,7 +1,11 @@
 import discord
+import io
 import sys
+import json
+import os
 
 current_rooms = []
+OWNER = 258002965833449472
 
 
 class AmongUs:
@@ -26,9 +30,6 @@ class AmongUs:
 
     def update_code(self, code):
         self.code = code
-
-    def kick(self, username=None, user=None):
-        print("kick code")
 
 
 async def update_room(room):
@@ -179,6 +180,97 @@ class MyClient(discord.Client):
 
                     await message.channel.send(waiting_list)
                     return
+
+        elif message.content.startswith("!dump"):
+            data = {
+                "channel": None,
+                "waiting": [],
+                "owner": None,
+                "message": None
+            }
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    for member in x.waiting:
+                        data["waiting"].append(member.id)
+
+                    data["channel"] = x.channel.id
+                    data["owner"] = x.owner.id
+                    data["text_channel"] = x.message.channel.id
+                    data["message"] = x.message.id
+
+                    break
+
+            if data["channel"] is None:
+                return
+
+            amongus_dump = io.BytesIO(bytes(json.dumps(data), encoding="utf-8"))
+
+            await message.channel.send(file=discord.File(amongus_dump, filename="amongus_roomdump.json"))
+
+        elif message.content.startswith("!restore"):
+            if message.author.id != OWNER:
+                return
+
+            try:
+                await message.attachments[0].save("amongus_data.json")
+            except LookupError and discord.HTTPException:
+                await message.channel.send("Failed. Remember to attach a file")
+                return
+
+            with open("amongus_data.json") as amongus_data:
+                restore_content = json.loads(amongus_data.read())
+                amongus_data.close()
+
+                try:
+                    if not isinstance(restore_content["owner"], int) \
+                            and not isinstance(restore_content["channel"], int) \
+                            and not isinstance(restore_content["text_channel"], int) \
+                            and not isinstance(restore_content["message"], int) \
+                            and not isinstance(restore_content["waiting"], list):
+                        await message.channel.send("Invalid file, aborting")
+                        return
+                except LookupError:
+                    await message.channel.send("Invalid file, aborting")
+                    return
+
+                owner = discord.utils.find(lambda o: o.id == restore_content["owner"], message.channel.guild.members)
+                channel = discord.utils.find(lambda c: c.id == restore_content["channel"],
+                                             message.channel.guild.channels)
+
+                text_channel = discord.utils.find(lambda c: c.id == restore_content["text_channel"],
+                                                  message.channel.guild.channels)
+
+                current = AmongUs(owner, channel)
+                current_rooms.append(current)
+                current.waiting = restore_content["waiting"]
+                current.message = await text_channel.fetch_message(restore_content["message"])
+
+                await update_room(current)
+                os.remove("amongus_data.json")
+
+        elif message.content.startswith("!remove"):
+            if len(message.mentions) == 0:
+                await message.channel.send("Please @ the user who you would like to kick.")
+                return
+
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    if message.author == x.owner:
+                        for i in x.waiting:
+                            if i == message.mentions[0]:
+                                x.waiting.remove(i)
+                                await update_room(x)
+                                return
+                        await message.channel.send("Could not find user in waiting")
+                        return
+
+        elif message.content.startswith("!removeall"):
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    if message.author == x.owner:
+                        x.waiting = []
+                        await update_room(x)
+                        return
 
 
 client = MyClient()
