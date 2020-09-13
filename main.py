@@ -49,7 +49,9 @@ async def update_room(room):
         if x not in room.lobby:
             waiting_members += str(x.name) + "\n"
         else:
-            room.waiting.remove(x)
+            for i in current_rooms:
+                if x in i.waiting:
+                    i.waiting.remove(x)
 
     if len(waiting_members) == 0:
         waiting_members = "No Players"
@@ -70,7 +72,9 @@ async def update_room(room):
 
 class MyClient(discord.Client):
     async def on_ready(self):
-        print('Logged on as {0}!'.format(self.user))
+        print('Logged on as {0}!\n'.format(self.user))
+        async for guild in client.fetch_guilds():
+            print(guild.name)
 
     async def on_voice_state_update(self, member, before, after):
         for x in current_rooms:
@@ -109,7 +113,6 @@ class MyClient(discord.Client):
 
             current.message = await message.channel.send(embed=current.embed)
             await update_room(current)
-            # await current_rooms[len(current_rooms) - 1]["message"].pin(reason="Among Us game")
 
         elif message.content.startswith("!join"):
             for x in current_rooms:
@@ -119,6 +122,7 @@ class MyClient(discord.Client):
                     else:
                         x.waiting.append(message.author)
                         await update_room(x)
+                        await message.add_reaction('✔️')
                         return
 
         elif message.content.startswith("!transferowner"):
@@ -138,6 +142,7 @@ class MyClient(discord.Client):
             if message.author == room.owner:
                 room.update_owner(message.mentions[0])
                 await update_room(room)
+                await message.add_reaction('✔️')
             else:
                 await message.channel.send("Only the room owner can change this value!")
 
@@ -147,6 +152,7 @@ class MyClient(discord.Client):
                     if message.author in x.waiting:
                         x.waiting.remove(message.author)
                         await update_room(x)
+                        await message.add_reaction('✔️')
                         return
 
         elif message.content.startswith("!deleteroom"):
@@ -155,6 +161,7 @@ class MyClient(discord.Client):
                     if message.author == x.owner or message.author.permissions_in(message.channel).manage_guild:
                         await x.message.delete()
                         current_rooms.remove(x)
+                        await message.add_reaction('✔️')
                         return
 
         elif message.content.startswith("!setcode"):
@@ -164,6 +171,7 @@ class MyClient(discord.Client):
                         try:
                             x.code = message.content.split()[1].upper()
                             await update_room(x)
+                            await message.add_reaction('✔️')
                         except IndexError and LookupError:
                             await message.channel.send("Please enter the code with the command")
 
@@ -260,6 +268,7 @@ class MyClient(discord.Client):
                             if i == message.mentions[0]:
                                 x.waiting.remove(i)
                                 await update_room(x)
+                                await message.add_reaction('✔️')
                                 return
                         await message.channel.send("Could not find user in waiting")
                         return
@@ -270,8 +279,15 @@ class MyClient(discord.Client):
                     if message.author == x.owner:
                         x.waiting = []
                         await update_room(x)
+                        await message.add_reaction('✔️')
                         return
 
+        elif message.content.startswith("!room"):
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    await message.channel.send(x.message.jump_url)
 
-client = MyClient()
-client.run(str(sys.argv[1]))
+
+if __name__ == "__main__":
+    client = MyClient()
+    client.run(str(sys.argv[1]))

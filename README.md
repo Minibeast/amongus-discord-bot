@@ -16,6 +16,7 @@ https://discord.com/oauth2/authorize?client_id=750905866827464825&scope=bot&perm
 - `!setcode` - Set the Among Us private game code (requires ownership)
 - `!deleteroom` - Deletes the room (requires ownership or manage server perms)
 - `!list` - Lists the users in the waiting list
+- `!room` - Returns the jump url for the original room message
 
 ### Dev Commands
 - `!dump` - Dumps the room information into a json file
