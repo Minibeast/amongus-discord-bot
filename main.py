@@ -248,9 +248,13 @@ class MyClient(discord.Client):
                 text_channel = discord.utils.find(lambda c: c.id == restore_content["text_channel"],
                                                   message.channel.guild.channels)
 
+                waiting = []
+                for x in restore_content["waiting"]:
+                    waiting.append(discord.utils.find(lambda m: m.id == x, message.channel.guild.members))
+
                 current = AmongUs(owner, channel)
                 current_rooms.append(current)
-                current.waiting = restore_content["waiting"]
+                current.waiting = waiting
                 current.message = await text_channel.fetch_message(restore_content["message"])
 
                 await update_room(current)
