@@ -7,6 +7,20 @@ import os
 current_rooms = []
 OWNER = 258002965833449472
 
+about = discord.Embed(title="Among Us", type='rich', color=discord.Color.from_rgb(207, 25, 32),
+                      url="https://github.com/Minibeast/amongus-discord-bot")
+about.set_thumbnail(url="https://i.imgur.com/lsXr8my.png")
+about.add_field(name="About", value="This bot was made by [Minibeast](https://minibeast.github.io), and focuses on "
+                                    "creating a seamless way for big Discord servers to manage a waiting list and game "
+                                    "information for the game [Among Us](https://wikipedia.org/wiki/Among_Us).")
+
+about.add_field(name="Commands",
+                value="!makeroom - Makes a room\n!deleteroom - Deletes the room\n!join - Join the waiting "
+                      "list\n!leave - Leave the waiting list\n!list - Lists the users in the waiting list\n!room - "
+                      "Returns the jump url for the original room message\n\nAll the bot's commands are listed "
+                      "on the GitHub's [README page]("
+                      "https://github.com/Minibeast/amongus-discord-bot/blob/master/README.md).", inline=False)
+
 
 class AmongUs:
     def __init__(self, owner, channel):
@@ -21,6 +35,7 @@ class AmongUs:
         self.embed.set_thumbnail(url="https://i.imgur.com/lsXr8my.png")
         self.embed.set_footer(text="Room Owner: {}".format(self.owner))
         self.message = None
+        self.autodelete = True
 
     def update_max(self, max_players):
         self.max_players = max_players
@@ -40,6 +55,14 @@ async def update_room(room):
 
     if len(voice_members) == 0:
         voice_members = "No Players"
+        if room.autodelete:
+            await room.message.channel.send(f"<@{room.owner.id}> The Among Us room closed automatically because all "
+                                            f"players left the associated Voice Channel '{room.channel.name}'.\nFor "
+                                            f"reference, this feature can be toggled "
+                                            f"with the command `!toggleautodelete`")
+            await room.message.delete()
+            current_rooms.remove(room)
+            return
 
     room.embed.clear_fields()
     room.embed.add_field(name="In Lobby ({0}/{1})".format(len(room.lobby), room.max_players), value=voice_members)
@@ -90,7 +113,10 @@ class MyClient(discord.Client):
         def check(arg):
             return message.author == arg.author
 
-        if message.content.startswith("!makeroom"):
+        if message.content.startswith("!about"):
+            await message.channel.send(embed=about)
+
+        elif message.content.startswith("!makeroom"):
             for x in current_rooms:
                 if x.guild == message.channel.guild:
                     return
@@ -114,7 +140,7 @@ class MyClient(discord.Client):
             current.message = await message.channel.send(embed=current.embed)
             await update_room(current)
 
-        elif message.content.startswith("!join"):
+        elif message.content.startswith("!join") or message.content.lower().startswith("!peepoarrive"):
             for x in current_rooms:
                 if x.guild == message.channel.guild:
                     if message.author in x.waiting:
@@ -146,7 +172,7 @@ class MyClient(discord.Client):
             else:
                 await message.channel.send("Only the room owner can change this value!")
 
-        elif message.content.startswith("!leave"):
+        elif message.content.startswith("!leave") or message.content.lower().startswith("!peepoleave"):
             for x in current_rooms:
                 if x.guild == message.channel.guild:
                     if message.author in x.waiting:
@@ -290,6 +316,17 @@ class MyClient(discord.Client):
             for x in current_rooms:
                 if x.guild == message.channel.guild:
                     await message.channel.send(x.message.jump_url)
+
+        elif message.content.startswith("!toggleautodelete"):
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    if message.author == x.owner:
+                        if x.autodelete:
+                            x.autodelete = False
+                        else:
+                            x.autodelete = True
+                        await message.add_reaction('✔️')
+                        return
 
 
 if __name__ == "__main__":
