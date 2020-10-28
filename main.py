@@ -140,7 +140,7 @@ class MyClient(discord.Client):
             current.message = await message.channel.send(embed=current.embed)
             await update_room(current)
 
-        elif message.content.startswith("!join") or message.content.lower().startswith("!peepoarrive"):
+        elif message.content.lower().startswith("!join") or message.content.lower().startswith("!peepoarrive"):
             for x in current_rooms:
                 if x.guild == message.channel.guild:
                     if message.author in x.waiting:
