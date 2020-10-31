@@ -17,7 +17,7 @@ about.add_field(name="About", value="This bot was made by [Minibeast](https://mi
 about.add_field(name="Commands",
                 value="!makeroom - Makes a room\n!deleteroom - Deletes the room\n!join - Join the waiting "
                       "list\n!leave - Leave the waiting list\n!list - Lists the users in the waiting list\n!room - "
-                      "Returns the jump url for the original room message\n\nAll the bot's commands are listed "
+                      "Returns the jump url for the original room message\n\nAll the bots commands are listed "
                       "on the GitHub's [README page]("
                       "https://github.com/Minibeast/amongus-discord-bot/blob/master/README.md).", inline=False)
 
@@ -36,6 +36,7 @@ class AmongUs:
         self.embed.set_footer(text="Room Owner: {}".format(self.owner))
         self.message = None
         self.autodelete = True
+        self.enablejoin = True
 
     def update_max(self, max_players):
         self.max_players = max_players
@@ -91,6 +92,8 @@ async def update_room(room):
     except discord.errors.NotFound:
         current_rooms.remove(room)
         return
+    except AttributeError:
+        pass
 
 
 class MyClient(discord.Client):
@@ -116,6 +119,35 @@ class MyClient(discord.Client):
         if message.content.startswith("!about"):
             await message.channel.send(embed=about)
 
+        elif message.content.startswith("!debugmakeroom"):
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    return
+
+            try:
+                id = int(message.content.split()[1])
+            except LookupError:
+                message.channel.send("Please input an ID")
+                return
+
+            game_owner = None
+            voice_chan = None
+            for x in message.guild.channels:
+                if type(x) == discord.channel.VoiceChannel:
+                    if x.id == id:
+                        voice_chan = x
+                        game_owner = message.author
+
+            if voice_chan is None:
+                await message.channel.send("Invalid ID")
+                return
+
+            current = AmongUs(game_owner, voice_chan)
+            current_rooms.append(current)
+
+            current.message = await message.channel.send(embed=current.embed)
+            await update_room(current)
+
         elif message.content.startswith("!makeroom"):
             for x in current_rooms:
                 if x.guild == message.channel.guild:
@@ -126,7 +158,7 @@ class MyClient(discord.Client):
             for x in message.guild.channels:
                 if type(x) == discord.channel.VoiceChannel:
                     for i in x.members:
-                        if i == message.author:
+                        if i.id == message.author.id:
                             game_owner = message.author
                             voice_chan = x
 
@@ -142,7 +174,7 @@ class MyClient(discord.Client):
 
         elif message.content.lower().startswith("!join") or message.content.lower().startswith("!peepoarrive"):
             for x in current_rooms:
-                if x.guild == message.channel.guild:
+                if x.guild == message.channel.guild and x.enablejoin:
                     if message.author in x.waiting:
                         return
                     else:
@@ -325,6 +357,27 @@ class MyClient(discord.Client):
                             x.autodelete = False
                         else:
                             x.autodelete = True
+                        await message.add_reaction('✔️')
+                        return
+
+        elif message.content.startswith("!togglejoin"):
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    if message.author == x.owner:
+                        x.enablejoin = not x.enablejoin
+                        await message.add_reaction('✔️')
+                        return
+
+        elif message.content.startswith("!add"):
+            if len(message.mentions) == 0:
+                await message.channel.send("Please @ the user who you would like to add.")
+                return
+
+            for x in current_rooms:
+                if x.guild == message.channel.guild:
+                    if message.author == x.owner:
+                        x.waiting.append(message.mentions[0])
+                        await update_room(x)
                         await message.add_reaction('✔️')
                         return
 
