@@ -7,6 +7,9 @@ import os
 current_rooms = []
 OWNER = 258002965833449472
 
+intents = discord.Intents.default()
+intents.members = True
+
 about = discord.Embed(title="Among Us", type='rich', color=discord.Color.from_rgb(207, 25, 32),
                       url="https://github.com/Minibeast/amongus-discord-bot")
 about.set_thumbnail(url="https://i.imgur.com/lsXr8my.png")
@@ -112,9 +115,6 @@ class MyClient(discord.Client):
     async def on_message(self, message):
         if message.author == client.user:
             return
-
-        def check(arg):
-            return message.author == arg.author
 
         if message.content.startswith("!about"):
             await message.channel.send(embed=about)
@@ -383,5 +383,5 @@ class MyClient(discord.Client):
 
 
 if __name__ == "__main__":
-    client = MyClient()
+    client = MyClient(intents=intents)
     client.run(str(sys.argv[1]))
